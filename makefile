@@ -1,62 +1,29 @@
-BUILDDIR = ./build
-OBJDIR = $(BUILDDIR)/obj
-SRCDIR = ./source
-INCDIRS = ./include
-LIBDIRS = #-L
+TARGET = app
 
-## Target name
-TARGET = $(BUILDDIR)/a.out
+SRCS = $(shell find ./src    -type f -name * .cpp)
+HEADS = $(shell find ./include    -type f -name * .h)
+OBJS = $(SRCS:.cpp=.o)
+DEPS = Makefile.depend
 
-## Compiler options
-CC = gcc
-CFLAGS = -O2 -Wall
-CXX = g++
-CXXFLAGS = -O2 -Wall
-LDFLAGS =
+INCLUDES = -I./include
+CXXFLAGS = -O2 -Wall $(INCLUDES)
+LDFLAGS = -1m
 
-SRCS := $(shell find $(SRCDIR) -name *.cpp -or -name *.c -or -name *.s)
-OBJS := $(SRCS:%=$(OBJDIR)/%.o)
-DEPS := $(OBJS:.o=.d)
-LIBS = #-lboost_system -lboost_thread
-
-INCLUDE := $(shell find $(INCDIRS) -type d)
-INCLUDE := $(addprefix -I,$(INCLUDE))
-
-CPPFLAGS := $(INCLUDE) -MMD -MP
-LDFLAGS += $(LIBDIRS) $(LIBS)
-
-# Target
-default:
-	make all
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CXX) -o $@ $^ $(LDFLAGS)
+$(TARGET): $(OBJS) $(HEADS)
+  $(CXX) $(LDFLAGS) -o $@ $(OBJS)
+  
+run: all
+  @./$(TARGET)
 
-# assembly
-$(OBJDIR)/%.s.o: %.s
-	$(MKDIR_P) $(dir $@)
-	$(AS) $(ASFLAGS) -c $< -o $@
-
-# c source
-$(OBJDIR)/%.c.o: %.c
-	$(MKDIR_P) $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
-
-# c++ source
-$(OBJDIR)/%.cpp.o: %.cpp
-	$(MKDIR_P) $(dir $@)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
-	
-.PHONY: all clean rebuild
-
-clean:
-	$(RM) -r $(BUILDDIR)
-
-rebuild:
-	make clean && make
-
--include $(DEPS)
-
-MKDIR_P = mkdir -p
+.PHONY: depend clean
+depend:
+  $(CXX) $(INCLUDES) -MM $(SRCS) > $(DEPS)
+  @sed -i -E "s/^(.+?).o: ([^ ]+?)\1/2\1.o: \2\1/g" $(DEPS)
+  
+  clean:
+    $(RM) $(OBJS) $(TARGET)
+    
+  -include $(DEPS)
